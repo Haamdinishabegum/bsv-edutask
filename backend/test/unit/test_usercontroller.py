@@ -47,7 +47,6 @@ def test_multiple_users_found(controller, mock_dao, capfd):
 
 @pytest.mark.unit
 def test_no_user_found(controller, mock_dao):
-    mock_dao.find.return_value = []
     result = controller.get_user_by_email("test@example.com")
     assert result is None
 

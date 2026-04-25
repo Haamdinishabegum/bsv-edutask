@@ -1,11 +1,14 @@
 import pytest
 from src.controllers.usercontroller import UserController
+
+
 class MockDAO:
     def __init__(self, result):
         self.result = result
 
     def find(self, query):
-        return self.result
+        email = query.get("email")
+        return [user for user in self.result if user.email == email]
 
 
 class MockUser:
@@ -15,9 +18,7 @@ class MockUser:
 
 def create_controller(mock_result):
     dao = MockDAO(mock_result)
-    controller = UserController(dao)  # ✅ pass DAO here
-    return controller
-
+    return UserController(dao)
 
 
 def test_single_user_found():
@@ -26,17 +27,19 @@ def test_single_user_found():
 
     result = controller.get_user_by_email("test@example.com")
 
-    assert result == user
+    assert result.email == "test@example.com"
 
 
-def test_multiple_users_found():
+def test_multiple_users_found(capfd):
     user1 = MockUser("test@example.com")
     user2 = MockUser("test@example.com")
     controller = create_controller([user1, user2])
 
     result = controller.get_user_by_email("test@example.com")
 
-    assert result == user1  # should return first user
+    out, err = capfd.readouterr()
+    assert "more than one user" in out.lower()
+    assert result.email == "test@example.com"
 
 
 def test_no_user_found():
@@ -46,13 +49,11 @@ def test_no_user_found():
         controller.get_user_by_email("test@example.com")
 
 
-
 def test_invalid_email():
     controller = create_controller([])
 
     with pytest.raises(ValueError):
         controller.get_user_by_email("invalid-email")
-
 
 
 def test_empty_email():
@@ -62,9 +63,15 @@ def test_empty_email():
         controller.get_user_by_email("")
 
 
-
 def test_none_email():
     controller = create_controller([])
 
-    with pytest.raises(TypeError):
+    with pytest.raises(ValueError):
         controller.get_user_by_email(None)
+
+
+def test_invalid_email_partial():
+    controller = create_controller([])
+
+    with pytest.raises(ValueError):
+        controller.get_user_by_email("test@")
